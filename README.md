@@ -49,4 +49,5 @@ Target: <400MB RAM. Cloud services handle the heavy lifting.
 
 ## Status
 🚧 Layer 1: Core loop (wake → listen → think → speak)
+    
     Update 1.1 : Minor code fixes and update to the README.md
