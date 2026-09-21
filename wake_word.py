@@ -4,26 +4,38 @@ import struct
 import threading
 import logging
 
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
-class WakeWordListner:
-    def _init_(self, access_key, callback):
+
+class WakeWordListener:
+    def __init__(self, access_key, callback):
         self.access_key = access_key
         self.callback = callback
         self.porcupine = None
-        self.running = False 
+        self.audio_stream = None
+        self.running = False
         self.thread = None
 
     def start(self):
+        self.running = True
+        if self.thread and self.thread.is_alive():
+            return
+        self.thread = threading.Thread(target=self._listen, daemon=True)
+        self.thread.start()
+
+    def stop(self):
         self.running = False
         if self.thread:
             self.thread.join(timeout=1.0)
         if self.audio_stream:
             self.audio_stream.close()
+            self.audio_stream = None
         if self.porcupine:
             self.porcupine.delete()
+            self.porcupine = None
 
     def _listen(self):
+        pa = None
         try:
             self.porcupine = pvporcupine.create(
                 access_key=self.access_key,
@@ -32,7 +44,7 @@ class WakeWordListner:
             pa = pyaudio.PyAudio()
             self.audio_stream = pa.open(
                 rate=self.porcupine.sample_rate,
-                channels=1
+                channels=1,
                 format=pyaudio.paInt16,
                 input=True,
                 frames_per_buffer=self.porcupine.frame_length
@@ -46,11 +58,14 @@ class WakeWordListner:
                 if keyword_index >= 0:
                     logger.info("Wake word detected!")
                     threading.Thread(target=self.callback, daemon=True).start()
-            except Exception as e:
-                logger.error(f"Wake word listener error: {e}")
-            finally:
-                if self.audio_stream:
-                    self.audio_stream.close()
-                if self.porcupine:
-                    self.porcupine.delete()
+        except Exception as e:
+            logger.error(f"Wake word listener error: {e}")
+        finally:
+            if self.audio_stream:
+                self.audio_stream.close()
+                self.audio_stream = None
+            if self.porcupine:
+                self.porcupine.delete()
+                self.porcupine = None
+            if pa:
                 pa.terminate()

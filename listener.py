@@ -1,13 +1,15 @@
-import pyaudio
-import wave
-import io 
+import io
 import logging
+import wave
+
+import pyaudio
 from google.cloud import speech_v1
 
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
+
 
 class listener:
-    def _init_(self):
+    def __init__(self):
         self.client = speech_v1.SpeechClient()
         self.audio_format = pyaudio.paInt16
         self.channels = 1
@@ -23,11 +25,11 @@ class listener:
             channels=self.channels,
             rate=self.rate,
             input=True,
-            frames_per_buffer=self.chunk
+            frames_per_buffer=self.chunk,
         )
 
         logger.info("Recording.....")
-        frames[]
+        frames = []
         for _ in range(0, int(self.rate / self.chunk * self.record_seconds)):
             data = stream.read(self.chunk, exception_on_overflow=False)
             frames.append(data)
@@ -38,11 +40,11 @@ class listener:
         p.terminate()
 
         wav_buffer = io.BytesIO()
-        with wave.open(wav_buffer, 'wb') as wf:
+        with wave.open(wav_buffer, "wb") as wf:
             wf.setchannels(self.channels)
             wf.setsampwidth(p.get_sample_size(self.audio_format))
             wf.setframerate(self.rate)
-            wf.writeframes(b''.join(frames))
+            wf.writeframes(b"".join(frames))
         wav_buffer.seek(0)
 
         try:
@@ -57,9 +59,8 @@ class listener:
                 transcript = response.results[0].alternatives[0].transcript
                 logger.info(f"Transcribed: {transcript}")
                 return transcript
-            else:
-                logger.warning("No transcription returned.")
-                return None
-            except Exception as e:
-                logger.error(f"STT error: {e}")
-                return None
+            logger.warning("No transcription returned.")
+            return None
+        except Exception as e:
+            logger.error(f"STT error: {e}")
+            return None
