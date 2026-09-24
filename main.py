@@ -1,13 +1,18 @@
 import logging
 import sys
-import time
-from queue import Queue, Empty
 import signal
-
-from config import PORCUPINE_ACCESS_KEY, GEMINI_API_KEY
-from wake_word import WakeWordListener
+import time
+from config import (
+    PORCUPINE_ACCESS_KEY,
+    PORCUPINE_KEYWORD_PATH,
+    GEMINI_API_KEY,
+    validate_required_keys,
+)
+from mic_manager import MicManager
 from listener import Listener
+from brain import Brain
 from speaker import Speaker
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,57 +22,49 @@ logging.basicConfig(
         logging.FileHandler("jarvis.log")
     ]
 )
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
-task_queue = Queue()
-listener = Listener()
-brain = Brain(GEMINI_API_KEY) if GEMINI_API_KEY else None
-speaker = Speaker()
-wake_listener = None
+running = True
 
-def wake_callback():
-    """Callback when wake word is detected - enqueue a task."""
-    task_queue.put("wake")
-
-def process_wake():
-    """Capture, think, speak."""
-    logger.info("Processing wake...")
-    transcript = listener.capture_command()
-    if not transcript:
-        speaker.speak("Sorry, I didn't catch that.")
-        return
-    if brain:
-        reply = brain.get_response(transcript)
-    else:
-        reply = "Brain not initialized."
-    speaker.speak(reply)
+def signal_handler(sig, frame):
+    global running
+    logger.info("Shutting down...")
+    running = False
+    sys.exit(0)
 
 def main():
-    global wake_listener
+    global running
+    validate_required_keys()
 
-    if not PORCUPINE_ACCESS_KEY:
-        logger.error("PORCUPINE_ACCESS_KEY not set in .env")
-        sys.exit(1)
-    if not GEMINI_API_KEY:
-        logger.error("GEMINI_API_KEY not set in .env")
-        sys.exit(1)
-
-    wake_listener = WakeWordListener(PORCUPINE_ACCESS_KEY, wake_callback)
-    wake_listener.start()
+    mic_manager = MicManager(PORCUPINE_ACCESS_KEY, PORCUPINE_KEYWORD_PATH)
+    listener = Listener()
+    brain = Brain(GEMINI_API_KEY)
+    speaker = Speaker()
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
     logger.info("Jarvis is ready. Say 'Jarvis' to activate.")
-    while True:
+    while running:
         try:
-            item = task_queue.get(timeout=0.1)
-            if item == "wake":
-                process_wake()
-        except Empty:
-            continue
+            mic_manager.wait_for_wake_word()
+            if not running:
+                break
+            audio = mic_manager.record_command()
+            if not audio:
+                speaker.speak("Sorry, I couldn't hear you.")
+                continue
+            text = listener.transcribe(audio)
+            if not text:
+                speaker.speak("Sorry, I didn't catch that.")
+                continue
+            response = brain.process(text)
+            speaker.speak(response)
         except Exception as e:
             logger.error(f"Loop error: {e}")
+            speaker.speak("An error occured. Please try again.")
 
-if _name_ == "_main_":
+    mic_manager.close()
+
+if __name__ == "_main_":
     main()

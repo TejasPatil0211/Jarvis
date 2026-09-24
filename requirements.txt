@@ -6,3 +6,5 @@ pygame==2.6.0
 python-dotenv==1.0.1
 requests==2.32.3
 google-auth==2.30.0
+webrtcvad==2.0.10
+
