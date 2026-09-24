@@ -43,42 +43,6 @@ LLM         Gemini Flash (latest)               Cheap, fast, supports vision for
 TTS         Google Cloud TTS + espeak fallback  Great voice, fails gracefully
 Audio       I/OPyAudio + PygameStandard,        works everywhere
 
-📁 Project Structure
-textjarvis/
-├── main.py                       # Entry point, runs the main loop
-├── config.py                     # Loads .env, defines constants
-├── mic_manager.py                # (Layer 2) Shared PyAudio resource
-├── wake_word.py                  # Porcupine wake word listener
-├── listener.py                   # Records audio, sends to Google STT
-├── brain.py                      # Sends text to Gemini, gets response
-├── speaker.py                    # Plays TTS response via pygame
-├── memory.py                     # (Layer 3) Toggleable conversation memory
-├── settings.py                   # (Layer 3) CLI settings panel
-├── retry_helper.py               # (Layer 2) Retry decorator with backoff
-├── smoke_test.py                 # Component-by-component tests
-│
-├── skills/                       # Skill system (Layer 2+)
-│   ├── __init__.py
-│   ├── base.py                   # Skill base class
-│   ├── registry.py               # Auto-discovery
-│   ├── time_skill.py             # "What time is it?"
-│   ├── date_skill.py             # "What's today's date?"
-│   ├── joke_skill.py             # "Tell me a joke"
-│   ├── weather_skill.py          # Weather via wttr.in
-│   ├── timer_skill.py            # Set a timer
-│   ├── document_reader_skill.py  # (Layer 3) OCR for handwritten docs
-│   └── document_creator_skill.py # (Layer 3) Generate .docx files
-│
-├── documents/                    # Generated docs land here
-├── scans/                        # Drop handwritten images here for OCR
-│
-├── .env                          # API keys (gitignored)
-├── .env.example                  # Template
-├── requirements.txt              # Pinned Python dependencies
-├── README.md                     # This file
-├── LICENSE                       # MIT license
-└── jarvis.log                    # Runtime logs (gitignored)
-
 🚀 Setup
 1. Clone and enter the project
 bashgit clone https://github.com/YOUR_USERNAME/jarvis.git
