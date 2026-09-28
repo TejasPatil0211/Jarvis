@@ -1,12 +1,11 @@
 import importlib
-import struct
-import time
 import logging
+import struct
+
 try:
     webrtcvad = importlib.import_module("webrtcvad")
 except ImportError:
     webrtcvad = None
-from typing import Optional
 
 try:
     pyaudio = importlib.import_module("pyaudio")
@@ -21,7 +20,7 @@ except ImportError:
     pvporcupine = None
 
 class MicManager:
-    def __init__(self, access_key: str, keyword_path: Optional[str] = None):
+    def __init__(self, access_key: str, keyword_path: str | None = None):
         self.access_key = access_key
         self.keyword_path = keyword_path
         self._pa = None
@@ -74,7 +73,7 @@ class MicManager:
                 if porcupine.process(pcm) >= 0:
                     logger.info("Wake word detected!")
                     break
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, struct.error) as e:
             logger.error(f"Wake word detection error: {e}")
         finally:
             if stream:
@@ -119,7 +118,7 @@ class MicManager:
                         else:
                             silent_chunks = 0
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, struct.error) as e:
             logger.error(f"Recording error: {e}")
             logger.warning("Falling back to recorded audio.")
             return self._record_fixed(5.0)
@@ -136,7 +135,7 @@ class MicManager:
         chunk = 1024
         stream = self._open_stream(rate=rate, frames_per_buffer=chunk)
         frames = []
-        for _ in range(0, int(rate / chunk * duration)):
+        for _ in range(int(rate / chunk * duration)):
             data = stream.read(chunk, exception_on_overflow=False)
             frames.append(data)
         stream.stop_stream()

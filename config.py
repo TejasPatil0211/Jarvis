@@ -1,6 +1,7 @@
-import os
 import logging
+import os
 import sys
+
 
 # Load environment variables from .env file
 def load_dotenv(path=".env"):
@@ -42,7 +43,7 @@ LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s | %(message)s"
 LOG_LEVEL = logging.INFO
 
 # Gemini AI settings
-LLM_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-1.5-flash"
 SYSTEM_PROMPT = "You are Jarvis, a concise voice assistant. Keep response under 2 sentences."
 
 # Gemini TTS settings

@@ -1,18 +1,17 @@
 import logging
-import sys
 import signal
-import time
+import sys
+
+from brain import Brain
 from config import (
+    GEMINI_API_KEY,
     PORCUPINE_ACCESS_KEY,
     PORCUPINE_KEYWORD_PATH,
-    GEMINI_API_KEY,
     validate_required_keys,
 )
-from mic_manager import MicManager
 from listener import Listener
-from brain import Brain
+from mic_manager import MicManager
 from speaker import Speaker
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,7 +32,6 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 def main():
-    global running
     validate_required_keys()
 
     mic_manager = MicManager(PORCUPINE_ACCESS_KEY, PORCUPINE_KEYWORD_PATH)
@@ -60,11 +58,11 @@ def main():
                 continue
             response = brain.process(text)
             speaker.speak(response)
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TypeError, ConnectionError, TimeoutError) as e:
             logger.error(f"Loop error: {e}")
             speaker.speak("An error occured. Please try again.")
 
     mic_manager.close()
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     main()

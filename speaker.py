@@ -1,11 +1,13 @@
 import base64
+import importlib
 import io
 import json
+import logging
 import subprocess
 from urllib.error import HTTPError, URLError
-from urllib.request import Request as UrlRequest, urlopen
-import logging
-import importlib
+from urllib.request import Request as UrlRequest
+from urllib.request import urlopen
+
 import config
 from retry_helper import retry_with_backoff
 
@@ -30,7 +32,7 @@ class Speaker:
                 config.GOOGLE_APPLICATION_CREDENTIALS,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"],
             )
-        except Exception as e:
+        except (ImportError, AttributeError, FileNotFoundError, OSError, TypeError, ValueError) as e:
             logger.error(f"Failed to load TTS credentials: {e}")
             self.credentials = None
 
@@ -42,11 +44,12 @@ class Speaker:
             self.credentials.refresh(requests_auth.Request())
             return self.credentials.token
         return None
+
     @retry_with_backoff
     def _get_tts_audio(self, text: str) -> bytes:
         token = self._get_access_token()
         if not token:
-            raise Exception("No valid access token for TTS")
+            raise ValueError("No valid access token for TTS")
         url = "https://texttospeech.googleapis.com/v1/text:synthesize"
         headers = {
             "Authorization": f"Bearer {token}",
@@ -71,9 +74,9 @@ class Speaker:
 
         audio_content = response_data.get("audioContent")
         if not audio_content:
-            raise Exception("No audio content in TTS response")
+            raise ValueError("No audio content in TTS response")
         return base64.b64decode(audio_content)
-    
+
     def speak(self, text):
         if not text:
             return
@@ -86,7 +89,7 @@ class Speaker:
             while self._pygame.mixer.get_busy():
                 self._pygame.time.wait(10)
             logger.info("TTS played via Google.")
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, TypeError, AttributeError) as e:
             logger.warning(f"Google TTS failed: {e}. Falling back to espeak.")
             self._speak_espeak(text)
 
@@ -96,6 +99,6 @@ class Speaker:
             cmd = ["espeak", "-v", "en-us", "+m3", "-s", "160", text]
             subprocess.run(cmd, check=True, timeout=10)
             logger.info("TTS played via espeak")
-        except Exception as e:
+        except (FileNotFoundError, subprocess.SubprocessError, OSError, TimeoutError, ValueError) as e:
             logger.error(f"espeak fallback also failed: {e}")
         

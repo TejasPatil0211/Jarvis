@@ -1,14 +1,15 @@
-import os
 import importlib
 import inspect
-from typing import Optional, Type, List
-from .base import Skill
 import logging
+import os
+from typing import ClassVar
+
+from base import Skill
 
 logger = logging.getLogger(__name__)
 
 class SkillRegistry:
-    _skills: List[Skill] = []
+    _skills: ClassVar[list[Skill]] = []
 
     @classmethod
     def discover(cls):
@@ -25,11 +26,11 @@ class SkillRegistry:
                             skill = obj()
                             cls._skills.append(skill)
                             logger.info(f"Registered skill: {skill.name}")
-                except Exception as e:
+                except (ImportError, AttributeError, TypeError) as e:
                     logger.error(f"Failed to load skill {module_name}: {e}")
 
     @classmethod
-    def find_skill(cls, user_input: str) -> Optional[Skill]:
+    def find_skill(cls, user_input: str) -> Skill | None:
         cls.discover()
         for skill in cls._skills:
             if skill.matches(user_input):
@@ -37,12 +38,12 @@ class SkillRegistry:
         return None
 
     @classmethod
-    def execute(cls, user_input: str) -> Optional[str]:
+    def execute(cls, user_input: str) -> str | None:
         skill = cls.find_skill(user_input)
         if skill:
             try:
                 return skill.handle(user_input)
-            except Exception as e:
+            except (AttributeError, RuntimeError, TypeError) as e:
                 logger.error(f"Error executing skill {skill.name} error: {e}")
                 return "Sorry, I encountered an issue while processing your request."
         return None

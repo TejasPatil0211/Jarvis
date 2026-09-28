@@ -1,13 +1,15 @@
-from .base import Skill
 import json
 import logging
+from typing import ClassVar
 from urllib.request import Request, urlopen
+
+from base import Skill
 
 logger = logging.getLogger(__name__)
 
 class WeatherSkill(Skill):
     name = "weather"
-    keywords = ["weather", "temperature", "forecast", "how's the weather"]
+    keywords: ClassVar[list[str]] = ["weather", "temperature", "forecast", "how's the weather"]
 
     def handle(self, user_input: str) -> str:
         try:
@@ -21,6 +23,6 @@ class WeatherSkill(Skill):
             temp_c = current.get("temp_C", "unknown")
             desc = current.get("weatherDesc", [{}])[0].get("value", "unknown")
             return f"The weather is {desc.lower()} with {temp_c} degree Celsius of Temp."
-        except Exception as e:
+        except (OSError, ValueError, KeyError, IndexError, TypeError) as e:
             logger.error(f"Weather skill error: {e}")
             return "Sorry, I couldn't fetch the weather."
