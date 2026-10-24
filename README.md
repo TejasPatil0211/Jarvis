@@ -1,4 +1,5 @@
-Jarvis 🎙️
+# Jarvis 🎙️
+
 A personal voice assistant built in Python.                 
 Runs on low-end hardware,                 
 powered by free cloud APIs,                 
@@ -6,7 +7,7 @@ with a modular skill system and function calling.
 
 Say "jarvis" → it listens → it thinks → it acts → it answers.
 
-✨ Features:
+# ✨ Features:
 
 Core Voice Loop
 
@@ -20,39 +21,50 @@ Core Voice Loop
 
 🔇 Voice activity detection — stops recording when you stop talking
 
-Skills
+# Skills
 
 Modular,                 
 auto-discovered skills in skills/.                
 Add one file, restart, done.
 
-Skill	                Trigger	Does
+Skill	                 Trigger	                Does
 
-Time	                "what time is it"	Current time
+Time	                 "what time is it"	        Current time
 
-Date	                "what's today's date"	Current date + day
+Date	                 "what's today's date"	        Current date + day
 
-Joke	                "tell me a joke"	Random joke
+Joke	                 "tell me a joke"	        Random joke
 
-Weather	                "what's the weather"	Live weather via wttr.in
+Weather	                 "what's the weather"	        Live weather via wttr.in
 
-Timer	                "set a timer for 5 minutes"	Countdown + spoken alert
+Timer	                 "set a timer for 5 minutes"	Countdown + spoken alert
 
-Document Reader	                "read this document"	OCR for handwritten notes (Google Vision)
+Document Reader	          "read this document"	        OCR for handwritten notes (Google Vision)
 
-Document Creator	                "create a document about X"	Generates a .docx file
+Document Creator	  "create a document about X"	Generates a .docx file
 
-System Control (Layer 4)
+# System Control (Layer 4)
+
 🌐 Web search — DuckDuckGo, no API key needed
+
 🚀 Open apps — "open Chrome", "open github.com"
+
 🔊 Set volume — "set volume to 30"
+
 📸 Screenshots — "take a screenshot"
-Memory & Config
+
+# Memory & Config
+
 💬 Toggleable conversation memory — remembers your last 10 turns
+
 ⚙️ CLI settings panel — python settings.py to toggle memory, change paths
+
 📄 Document handling — read handwritten notes, create Word documents
+
 🧩 Function calling — the LLM auto-picks the right skill for ambiguous requests
+
 🏗️ Architecture
+
 text
 
 
@@ -77,77 +89,126 @@ text
 Everything CPU-heavy runs in the cloud. Local footprint stays under ~400MB RAM.
 
 📁 Project Structure
-text
 
 
 jarvis/
-├── main.py                       # Entry point — runs the main loop
+
+├── main.py                       # Entry point — runs the main loop                
+
 ├── config.py                     # Env vars, constants, key validation
+
 ├── mic_manager.py                # Shared PyAudio resource, VAD recording
+
 ├── wake_word.py                  # Porcupine wake word listener
+
 ├── listener.py                   # STT via Groq Whisper (25MB guard)
+
 ├── brain.py                      # LLM via Groq + function calling
+
 ├── speaker.py                    # TTS via Google Cloud + espeak fallback
+
 ├── tools.py                      # Function calling schemas + executor
+
 ├── memory.py                     # Toggleable conversation memory
+
 ├── settings.py                   # CLI settings panel
+
 ├── retry_helper.py               # Retry with exponential backoff
+
 ├── simple_vad.py                 # Pure-Python VAD (webrtcvad alternative)
+
 │
+
 ├── skills/                       # Auto-discovered skill system
+
 │   ├── __init__.py
+
 │   ├── base.py                   # Skill base class
+
 │   ├── registry.py               # Auto-discovery + dispatch
+
 │   ├── time_skill.py
+
 │   ├── date_skill.py
+
 │   ├── joke_skill.py
+
 │   ├── weather_skill.py
+
 │   ├── timer_skill.py
+
 │   ├── document_reader_skill.py  # OCR via Google Vision
+
 │   └── document_creator_skill.py # .docx generation
+
 │
+
 ├── tests/                        # Pytest suites
+
 │   ├── test_skills.py
+
 │   └── test_layer4.py
+
 │
+
 ├── documents/                    # Generated docs land here
+
 ├── scans/                        # Drop handwritten images here for OCR
+
 ├── screenshots/                  # Captured screenshots land here
+
 │
+
 ├── .env                          # API keys (gitignored)
+
 ├── .env.example                  # Template
+
 ├── requirements.txt              # Pinned deps
+
 ├── README.md                     # This file
+
 ├── CHANGELOG.md                  # Version history
+
 ├── LICENSE                       # MIT
+
 └── BUGS_FOUND.md                 # Known issues (if any)
+
+
 🚀 Setup
 1. Prerequisites
-Python 3.10+ (tested on 3.12, 3.13, 3.14)
-A microphone and speakers
-Internet connection (STT, LLM, TTS all cloud-based)
+Python 3.10+ (tested on 3.12, 3.13, 3.14)                
+A microphone and speakers                
+Internet connection (STT, LLM, TTS all cloud-based)                
+
 2. Install
-bash
 
-
+bash                
 git clone https://github.com/TejasPatil0211/Jarvis.git
 cd Jarvis
-# Create virtual environment
+Create virtual environment
+
 python -m venv venv
-# Activate it
-# Windows:
+
+Activate it
+
+1. Windows:
+
 venv\Scripts\activate
-# macOS/Linux:
+
+2. macOS/Linux:
+
 source venv/bin/activate
-# Install dependencies
+
+Install dependencies
+
 pip install -r requirements.txt
+
 Windows note: If pyaudio fails to install, you need PortAudio:
 
-cmd
+ Download from https://www.portaudio.com/ downloads/archives/ 
+ OR use the sounddevice fallback (see API_SETUP_GUIDE.md)
 
 
-# Download from https://www.portaudio.com/ downloads/archives/ 
-# OR use the sounddevice fallback (see API_SETUP_GUIDE.md)
 Verify everything installed:
 
 bash
