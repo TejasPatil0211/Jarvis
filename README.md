@@ -1,26 +1,47 @@
 Jarvis 🎙️
-A personal voice assistant built in Python. Runs on low-end hardware, powered by free cloud APIs, with a modular skill system and function calling.
+A personal voice assistant built in Python.                 
+Runs on low-end hardware,                 
+powered by free cloud APIs,                 
+with a modular skill system and function calling.
 
 Say "jarvis" → it listens → it thinks → it acts → it answers.
 
-✨ Features
-Core Voice Loop
-🎙️ Wake word detection — Porcupine listens locally for "jarvis" (or a custom .ppn file)
-👂 Speech recognition — Groq Whisper (fast, free, generous limits)
-🧠 LLM brain — Groq openai/gpt-oss-120b with function calling
-🔊 Text-to-speech — Google Cloud TTS with local espeak fallback
-🔇 Voice activity detection — stops recording when you stop talking
-Skills
-Modular, auto-discovered skills in skills/. Add one file, restart, done.
+✨ Features:
 
-Skill	Trigger	Does
-Time	"what time is it"	Current time
-Date	"what's today's date"	Current date + day
-Joke	"tell me a joke"	Random joke
-Weather	"what's the weather"	Live weather via wttr.in
-Timer	"set a timer for 5 minutes"	Countdown + spoken alert
-Document Reader	"read this document"	OCR for handwritten notes (Google Vision)
-Document Creator	"create a document about X"	Generates a .docx file
+Core Voice Loop
+
+🎙️ Wake word detection — Porcupine listens locally for "jarvis" (or a custom .ppn file)
+
+👂 Speech recognition — Groq Whisper (fast, free, generous limits)
+
+🧠 LLM brain — Groq openai/gpt-oss-120b with function calling
+
+🔊 Text-to-speech — Google Cloud TTS with local espeak fallback
+
+🔇 Voice activity detection — stops recording when you stop talking
+
+Skills
+
+Modular,                 
+auto-discovered skills in skills/.                
+Add one file, restart, done.
+
+Skill	                Trigger	Does
+
+Time	                "what time is it"	Current time
+
+Date	                "what's today's date"	Current date + day
+
+Joke	                "tell me a joke"	Random joke
+
+Weather	                "what's the weather"	Live weather via wttr.in
+
+Timer	                "set a timer for 5 minutes"	Countdown + spoken alert
+
+Document Reader	                "read this document"	OCR for handwritten notes (Google Vision)
+
+Document Creator	                "create a document about X"	Generates a .docx file
+
 System Control (Layer 4)
 🌐 Web search — DuckDuckGo, no API key needed
 🚀 Open apps — "open Chrome", "open github.com"
