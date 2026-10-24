@@ -16,7 +16,7 @@ class JokeSkill(Skill):
             "Why did the scarecrow win an award? He was outstanding in his field.",
             "I’m reading a book on anti-gravity. It’s impossible to put down.",
             "What do you call a bear with no teeth? A gummy bear.",
-            "Why don’t skeletons fight each other? They don’t have the guts."
+            "Why don’t skeletons fight each other? They don’t have the guts.",
             
         ]
         return random.choice(jokes)

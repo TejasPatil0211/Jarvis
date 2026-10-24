@@ -1,10 +1,33 @@
+# Voice Stack
 pvporcupine>=3.0.2
-pyaudio>=0.2.14
-google-generativeai>=0.7.2
-google-cloud-speech>=2.24.1
-pygame>=2.6.1
+
+# Mic: prefer pyaudio; fall back to sounddevice
+numpy>=1.26.4; python_version>= "3.14"
+sounddevice>=0.5.6; python_version >= "3.14"
+pyaudio>=0.2.14; python_version < "3.14"
+
+# VAD: SimpleVAD handles fallback as webrtcvad doesn't support fallback
+webrtcvad>=2.0.10; python_version < "3.12"
+
+# API's
+google-cloud-texttospeech>=2.24.1
+google-auth>=2.30.0
+openai>=1.40.0
+google-cloud-vision>=3.7.0
+google-api-python-client>=2.100.0
+
+# Utils
+python-dotenv>=1.0.1
+pygame-ce>=2.5.7
 python-dotenv>=1.0.1
 requests>=2.32.3
-google-auth>=2.30.0
-webrtcvad>=2.0.10
+python-docx>=1.1.0
+Pillow>=10.3.0
+
+# System control
+pycaw>=20230407; sys_platform == "win32" and python_version < "3.14"
+pywin32>=306; sys_platform == "win32"
+comtypes>=1.2.0; sys_platform == "win32"
+pyobjc-framework-Cocoa>=10.0; sys_platform == "darwin"
+
 

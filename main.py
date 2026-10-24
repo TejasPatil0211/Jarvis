@@ -4,7 +4,6 @@ import sys
 
 from brain import Brain
 from config import (
-    GEMINI_API_KEY,
     PORCUPINE_ACCESS_KEY,
     PORCUPINE_KEYWORD_PATH,
     validate_required_keys,
@@ -36,7 +35,7 @@ def main():
 
     mic_manager = MicManager(PORCUPINE_ACCESS_KEY, PORCUPINE_KEYWORD_PATH)
     listener = Listener()
-    brain = Brain(GEMINI_API_KEY)
+    brain = Brain()
     speaker = Speaker()
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -56,6 +55,12 @@ def main():
             if not text:
                 speaker.speak("Sorry, I didn't catch that.")
                 continue
+
+            text_lower = text.lower()
+            if "open settings" in text_lower or "settings panel" in text_lower:
+                speaker.speak("Run python settings.py from a terminal.")
+                continue
+
             response = brain.process(text)
             speaker.speak(response)
         except (OSError, RuntimeError, ValueError, TypeError, ConnectionError, TimeoutError) as e:

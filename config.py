@@ -2,29 +2,27 @@ import logging
 import os
 import sys
 
-
-# Load environment variables from .env file
-def load_dotenv(path=".env"):
-    """Load simple KEY=VALUE entries without requiring python-dotenv."""
-    if not os.path.isfile(path):
-        return
-    with open(path, encoding="utf-8") as env_file:
-        for line in env_file:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            value = value.strip().strip('"').strip("'")
-            os.environ.setdefault(key.strip(), value)
-
+try:
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - optional dependency for local .env files
+    def load_dotenv(*args, **kwargs):
+        return False
 
 load_dotenv()
 
 # API keys and credentials
 PORCUPINE_ACCESS_KEY = os.getenv("PORCUPINE_ACCESS_KEY")
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 PORCUPINE_KEYWORD_PATH = os.getenv("PORCUPINE_KEYWORD_PATH")
+
+# Groq (LLM + STT)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "openai/gpt-oss-120b")
+GROQ_STT_MODEL = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
+
+# Google Cloud TTS 
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+TTS_VOICE_NAME = os.getenv("TTS_VOICE_NAME", "en-US-Standard-A")
 
 # Audio settings
 SAMPLE_RATE = 16000
@@ -33,39 +31,42 @@ CHUNK_SIZE = 512 # frames per buffer for PyAudio
 FORMAT = 16 # bits per sample (pyaudio.paInt16)
 RECORD_SECONDS = 5 # duration for command capture
 
-# Porcupine wake word settings
-WAKE_WORD = "jarvis"
-POCUPINE_MODEL_PATH = None 
+# Feature Flags(settings.py)
+MEMORY_ENABLED = os.getenv("MEMORY_ENABLED", "True").lower() in ("true", "1", "yes")
+MEMORY_MAX_TURNS = int(os.getenv("MEMORY_MAX_TURNS", "10"))
+DOCS_OUTPUT_DIR = os.getenv("DOCS_OUTPUT_DIR", "./documents")
+OCR_TEMP_DIR = os.getenv("OCR_TEMP_DIR", "./scans")
 
-#Logging configuration
-LOG_FILE = "jarvis.log"
-LOG_FORMAT = "%(asctime)s | %(levelname)s | %(module)s | %(message)s"
-LOG_LEVEL = logging.INFO
+# Layer 4 System Control
+SCREEENSHOTS_DIR = os.getenv("SCREENSHOTS_DIR", "./screenshots")
 
-# Gemini AI settings
-GEMINI_MODEL = "gemini-1.5-flash"
-SYSTEM_PROMPT = "You are Jarvis, a concise voice assistant. Keep response under 2 sentences."
-
-# Gemini TTS settings
-TTS_MODEL = "gemini-1.5-flash"
-TTS_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{TTS_MODEL}:generateContent?key={GEMINI_API_KEY}"
-
-# Google Cloud Speech settings
-STT_SAMPLE_RATE = SAMPLE_RATE
-STT_ENCODING = "LINEAR16"
-STT_LANGUAGE_CODE = "en-US"
+# Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(module)s | %(message)s",
+    handlers=[
+        logging.FileHandler("jarvis.log"),
+        logging.StreamHandler(),        
+    ],
+    )
+logger = logging.getLogger(__name__)
 
 def validate_required_keys():
+    """Validate required API keys at startup."""
     missing = []
     if not PORCUPINE_ACCESS_KEY:
         missing.append("PORCUPINE_ACCESS_KEY")
+    if not OPENAI_API_KEY:
+        missing.append("OPENAI_API_KEY")
     if not GOOGLE_APPLICATION_CREDENTIALS:
         missing.append("GOOGLE_APPLICATION_CREDENTIALS")
-    if not GEMINI_API_KEY:
-        missing.append("GEMINI_API_KEY")
+    
     if missing:
-        print("Error: Missing required environment variables")
+        print("ERROR: Missing required environment variables:")
         for m in missing:
-            print(f" - {m}")
-        print("\nPlease set them in .env file and refer to README.md for setup help.")
+            print(f" - {m} not set in .env")
+        print("\nGet them at:")
+        print(" Porcupine: https://console.picovoice.ai/")
+        print(" Groq: https://console.groq.com/keys")
+        print(" Google: https://console.cloud.google.com/")
         sys.exit(1)
