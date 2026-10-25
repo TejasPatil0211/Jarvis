@@ -45,10 +45,10 @@ class ConversationMemory:
         for turn in self.history:
             messages.append({"role": "user", "content": turn.get("user_input", turn.get("user", ""))})
             messages.append({"role": "assistant", "content": turn.get("jarvis_response", turn.get("jarvis",""))})
-            return messages
+        return messages
 
     def get_context(self) -> list:
-        return self.get_messages
+        return self.get_messages()
 
     def clear(self):
         self.history = []
@@ -64,7 +64,7 @@ class ConversationMemory:
 
     def _save(self):
         try:
-            with open(self,self.storage_path, "w", encoding="utf-8") as f:
+            with open(self.storage_path, "w", encoding="utf-8") as f:
                 json.dump(self.history, f, indent=2)
         except (OSError, TypeError, ValueError) as e:
             logger.error(f"Failed to save memory: {e}")

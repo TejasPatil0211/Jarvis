@@ -19,7 +19,7 @@ except ImportError:
         _backend_label = f"pyaudio {getattr(_pyaudio, '__version__', '?')}"
     except ImportError:
         logger.error(
-            "No audio backend availabel. Install 'sounddevice' (Python 3.14+)"
+            "No audio backend available. Install 'sounddevice' (Python 3.14+)"
             "or 'pyaudio' (older Python versions)."
         )
 
@@ -94,47 +94,49 @@ class MicManager:
         return pa, stream
 
     def wait_for_wake_word(self) -> None:
-        """Block until Porcupine detects the wake word, then return."""
+        """Block until the wake word is detected, then return.
+
+        Uses the pluggable detector in wake_word.py (Porcupine or openWakeWord).
+        """
         if _audio_backend is None:
             raise RuntimeError("No audio backend - cannot run wake word.")
-        
-        pvporcupine = importlib.import_module("pvporcupine")
 
-        porcupine = None
+        import config
+        from wake_word import WakeWordDetector
+
+        detector = WakeWordDetector(
+            engine=config.WAKE_ENGINE,
+            access_key=self.access_key,
+            keyword_path=self.keyword_path,
+            model=config.WAKEWORD_MODEL,
+            threshold=config.WAKEWORD_THRESHOLD,
+        )
+        frame_len = detector.frame_length
+        rate = detector.sample_rate
+
         stream = None
         pa = None
         try:
-            if self.keyword_path:
-                porcupine = pvporcupine.create(
-                    access_key=self.access_key,
-                    keyword_path=[self.keyword_path],
-                )
-            else:
-                porcupine = pvporcupine.create(
-                    access_key=self.access_key,
-                    keyword=["jarvis"],
-                )
-            frame_len = porcupine.frame_length
-            rate = porcupine.sample_rate
-
-            logger.info("Listening for wake word...")
+            logger.info(
+                f"Listening for wake word (engine={detector.name}, "
+                f"frame={frame_len}, rate={rate})..."
+            )
 
             if _audio_backend == "sounddevice":
                 stream = self._sd_open_input(rate=rate, blocksize=frame_len)
                 while True:
-                    pcm_tuple = self._sd_read_tuple(stream, frame_len)
-                    if porcupine.process(pcm_tuple) >= 0:
+                    raw = self._sd_read_bytes(stream, frame_len)
+                    if detector.process(raw):
                         logger.info("Wake word detected!")
                         break
             else:
                 pa, stream = self._pa_open_input(rate=rate, frames_per_buffer=frame_len)
                 while True:
                     raw = stream.read(frame_len, exception_on_overflow=False)
-                    pcm_tuple = struct.unpack_from("h" * frame_len, raw)
-                    if porcupine.process(pcm_tuple) >= 0:
+                    if detector.process(raw):
                         logger.info("Wake word detected!")
                         break
-        
+
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Wake word detection error: {e}")
         finally:
@@ -150,8 +152,7 @@ class MicManager:
                     logger.warning("Error while closing audio stream: %s", exc)
                 if pa is not None:
                     pa.terminate()
-                if porcupine is not None:
-                    porcupine.delete() 
+            detector.close()
 
     def record_command(self, max_duration: float = 5.0, silence_timeout: float = 1.0,) -> bytes:
         """Record up to max_duration seconds, cutting early after silence_timeout seconds of silence. Returns 16 kHz mono int16 bytes."""

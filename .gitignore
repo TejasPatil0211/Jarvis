@@ -1,0 +1,33 @@
+# Secrets — never commit these
+.env
+gcp-credentials.json
+*-service-account-*.json
+*.ppn
+
+# Runtime output
+jarvis.log
+jarvis_memory.json
+documents/
+scans/
+screenshots/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Tooling
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

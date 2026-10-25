@@ -35,7 +35,7 @@ SKILL_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_weather",
-            "description": "Get currnet weather for a location",
+            "description": "Get current weather for a location",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -47,13 +47,24 @@ SKILL_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "tell_joke",
+            "description": "Tell the user a random joke",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "set_timer",
-            "description": "Set a timer for N seconds or minutes",
+            "description": "Set a timer for N seconds, minutes, or hours",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "duration": {"type": "integer"},
-                    "unit": {"type": "string", "enum": ["seconds", "minutes"]},
+                    "unit": {"type": "string", "enum": ["seconds", "minutes", "hours"]},
                 },
                 "required": ["duration", "unit"],
             },
@@ -138,7 +149,7 @@ def _get_weather(location: str = "") -> str:
         desc = current.get("weatherDesc", [{}])[0].get("value", "unknown")
         return f"Weather in {location or 'your area'}: {desc.lower()}, {temp}C."
     except (OSError, ValueError, TypeError):
-        return "Weather data unavailabel."
+        return "Weather data unavailable."
 
 def _tell_joke() -> str:
     try:
@@ -150,7 +161,16 @@ def _tell_joke() -> str:
 def _set_timer(duration: int, unit: str) -> str:
     if duration <= 0:
         return "Please specify a positive duration."
-    seconds = duration * 60 if unit.startswith("min") else duration
+    unit = (unit or "minutes").lower()
+    if unit.startswith("hour") or unit.startswith("hr"):
+        seconds = duration * 3600
+    elif unit.startswith("min"):
+        seconds = duration * 60
+    elif unit.startswith("sec"):
+        seconds = duration
+    else:
+        seconds = duration * 60  # default to minutes
+
     def _fire(delay: int) -> None:
         time.sleep(delay)
         try:
@@ -181,11 +201,11 @@ def _web_search(query: str) -> str:
         return "Web search failed."
 
 def _open_app(name: str) -> str:
-    name = name.strip
+    name = (name or "").strip()
     if not name: return "No application specified."
 
     system = platform.system()
-    if "." in name and not name.endswith(".exe") and "" not in name:
+    if "." in name and not name.endswith(".exe") and " " not in name:
         url = name if name.startswith("http") else f"https://{name}"
         try:
             if system == "Windows": os.startfile(url)
@@ -194,7 +214,7 @@ def _open_app(name: str) -> str:
             return f"Opening {url}."
         except (OSError, ValueError, TypeError, subprocess.SubprocessError) as e: return f"Couldn't open URL: {e}"
 
-    name = name.lower
+    name = name.lower()
     apps = {
         "chrome": {"Windows": "chrome.exe", "Darwin": "Google Chrome", "Linux": "google-chrome"},
         "code": {"Windows": "code.cmd", "Darwin": "Visual Studio Code", "Linux": "code"},
@@ -226,10 +246,12 @@ def _set_volume(level: int) -> str:
             devices = AudioUtilities.GetSpeakers()
             interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
             volume = cast(interface, POINTER(IAudioEndpointVolume))
-            volume.SetMasterVolumeLevelScaler(level / 100.0, None)
+            volume.SetMasterVolumeLevelScalar(level / 100.0, None)
             return f"Volume set to {level}%."
         except ImportError:
             return "Need pycaw and comtypes for Windows volume. Run: pip install pycaw comtypes"
+        except (AttributeError, OSError, TypeError, ValueError) as e:
+            return f"Volume control failed: {e}"
     elif system == "Darwin":
         subprocess.run(["osascript", "-e", f"set volume output volume {level}"], check=True)
         return f"Volume set to {level}%."

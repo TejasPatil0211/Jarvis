@@ -19,23 +19,27 @@ print(f"  Platform: {platform.system()} {platform.release()} ({platform.machine(
 print()
 
 REQUIRED = [
-    ("pvporcupine", "Wake word detection"),
     ("openai", "LLM + STT (Groq)"),
     ("dotenv", ".env loading"),
-    ("google.cloud.texttospeech", "TTS (Google Cloud)"),
-    ("google.cloud.vision", "OCR (Google Cloud)"),
     ("docx", "Document creation (.docx)"),
     ("PIL", "Image handling / screenshots"),
     ("requests", "HTTP for Google TTS"),
 ]
 
 OPTIONAL = [
-    ("webrtcvad", "VAD (C extension)"),
+    ("openwakeword", "Wake word (no key needed)"),
+    ("onnxruntime", "Wake word inference"),
+    ("pvporcupine", "Wake word (needs AccessKey)"),
+    ("edge_tts", "TTS (no key needed)"),
     ("sounddevice", "Audio (alternative to pyaudio)"),
+    ("pytesseract", "Local OCR (no key needed)"),
+    ("webrtcvad", "VAD (C extension)"),
     ("pycaw", "Windows volume control"),
     ("pywin32", "Windows fallback for volume"),
     ("comtypes", "Windows COM (pycaw dep)"),
     ("pyobjc", "macOS support"),
+    ("google.cloud.texttospeech", "Google TTS (needs billing account)"),
+    ("google.cloud.vision", "Google Vision OCR (needs billing account)"),
 ]
 
 print("--- Required packages ---")
@@ -89,11 +93,15 @@ else:
     try:
         from simple_vad import SimpleVAD
         vad = SimpleVAD(2)
-        test = b"\x00\x10" * 480  # ~30ms of low-amplitude audio
-        assert vad.is_speech(test) is False
+        # Two zero bytes per sample = digital silence
+        test = b"\x00\x00" * 480  # ~30ms of silence
+        assert vad.is_speech(test) is False, "silence detected as speech"
         print("  [OK]   SimpleVAD available as fallback (pure Python)")
     except ImportError:
         print("  [FAIL] NEITHER webrtcvad NOR simple_vad available")
+        failed.append("vad")
+    except AssertionError as e:
+        print(f"  [FAIL] SimpleVAD is broken: {e}")
         failed.append("vad")
 
 print()
@@ -105,14 +113,31 @@ try:
 
     import_module("dotenv").load_dotenv(Path(__file__).parent / ".env")
 
-    checks = [
-        ("PORCUPINE_ACCESS_KEY", "Picovoice wake word"),
+    # Only OPENAI_API_KEY is genuinely required. Everything else has a
+    # free, no-signup fallback — so those are warnings, not failures.
+    required = [
         ("OPENAI_API_KEY", "Groq LLM + STT"),
-        ("OPENAI_BASE_URL", "Groq endpoint"),
-        ("OPENAI_MODEL", "LLM model"),
-        ("GOOGLE_APPLICATION_CREDENTIALS", "Google Cloud TTS + Vision"),
     ]
-    for var, description in checks:
+    optional = [
+        ("PORCUPINE_ACCESS_KEY", "Picovoice wake word (openWakeWord used if unset)"),
+        ("GOOGLE_APPLICATION_CREDENTIALS", "Google Cloud TTS + Vision (Edge TTS used if unset)"),
+        ("OPENROUTER_API_KEY", "OpenRouter vision OCR (OCR.space used if unset)"),
+        ("OCRSPACE_API_KEY", "OCR.space key (public demo key used if unset)"),
+    ]
+
+    print("  required:")
+    for var, description in required:
+        value = os.getenv(var)
+        if value:
+            masked = value[:8] + "..." if len(value) > 12 else value
+            print(f"    [OK]   {var:32} {description} ({masked})")
+        else:
+            print(f"    [FAIL] {var:32} NOT SET — {description}")
+            failed.append(var)
+
+    print()
+    print("  optional (each has a free fallback):")
+    for var, description in optional:
         value = os.getenv(var)
         if value:
             if "CREDENTIALS" in var:
@@ -122,15 +147,19 @@ try:
                 else:
                     exists = (Path(__file__).parent / path).exists()
                 status = "[OK]" if exists else "[FAIL] file not found"
-                print(f"  {status} {var:32} {description}")
+                print(f"    {status} {var:32} {description}")
                 if not exists:
                     failed.append(var)
             else:
                 masked = value[:8] + "..." if len(value) > 12 else value
-                print(f"  [OK]   {var:32} {description} ({masked})")
+                print(f"    [OK]   {var:32} {description} ({masked})")
         else:
-            print(f"  [FAIL] {var:32} NOT SET — {description}")
-            failed.append(var)
+            print(f"    [WARN] {var:32} not set — {description}")
+
+    print()
+    print("  engine selection:")
+    for var in ("WAKE_ENGINE", "TTS_ENGINE", "OCR_ENGINE"):
+        print(f"    {var:32} {os.getenv(var, 'auto')}")
 except ImportError:
     print("  [SKIP] python-dotenv not installed, can't check .env")
 
@@ -142,7 +171,7 @@ if failed:
         print(f"    - {item}")
     print()
     print("  Fix: pip install -r requirements.txt")
-    print("  See API_SETUP_GUIDE.md for key setup")
+    print("  See API_SETUP.md for key setup")
     print("=" * 60)
     sys.exit(1)
 else:

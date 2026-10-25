@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
 from typing import ClassVar
 
-from base import Skill
+try:  # package context: `python -m jarvis.main`
+    from .base import Skill
+except ImportError:  # script context: `python main.py`
+    from base import Skill
 
 
 class DateSkill(Skill):

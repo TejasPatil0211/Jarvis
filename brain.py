@@ -13,7 +13,13 @@ from openai import (
 
 try:
     from tools import SKILL_TOOLS, execute_tool
-except ImportError:
+except ImportError as e:
+    # Do NOT stay silent here — a broken tools import silently disables every
+    # Layer 4 function (web search, volume, screenshots, timers, weather).
+    logger.error(
+        "tools module could not be imported (%s) — all function calling is "
+        "disabled. Check config.py and tools.py.", e
+    )
     SKILL_TOOLS = []
     def execute_tool(name, args): return "Tools module missing."
 

@@ -1,3 +1,4 @@
+import logging
 import os
 
 from config import (
@@ -7,6 +8,8 @@ from config import (
     OCR_TEMP_DIR,
 )
 from memory import ConversationMemory
+
+logger = logging.getLogger(__name__)
 
 
 def clear_screen():
@@ -33,17 +36,19 @@ def update_env(key: str, value: str):
     env_path = ".env"
     lines = []
     found = False
-    if not os.path.exists(env_path):
+    if os.path.exists(env_path):
         with open(env_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
+    else:
+        logger.warning(f"{env_path} not found — creating a new one.")
 
     with open(env_path, "w", encoding="utf-8") as f:
         for line in lines:
-            if line.startswith(f"{key}="):
+            if line.strip().startswith(f"{key}="):
                 f.write(f"{key}={value}\n")
                 found = True
             else:
-                f.write(line)
+                f.write(line if line.endswith("\n") else line + "\n")
         if not found:
             f.write(f"{key}={value}\n")
 

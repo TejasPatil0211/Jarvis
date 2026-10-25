@@ -3,7 +3,10 @@ import logging
 from typing import ClassVar
 from urllib.request import Request, urlopen
 
-from base import Skill
+try:  # package context: `python -m jarvis.main`
+    from .base import Skill
+except ImportError:  # script context: `python main.py`
+    from base import Skill
 
 logger = logging.getLogger(__name__)
 

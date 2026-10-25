@@ -4,7 +4,10 @@ import threading
 import time
 from typing import ClassVar
 
-from base import Skill
+try:  # package context: `python -m jarvis.main`
+    from .base import Skill
+except ImportError:  # script context: `python main.py`
+    from base import Skill
 
 logger = logging.getLogger(__name__)
 

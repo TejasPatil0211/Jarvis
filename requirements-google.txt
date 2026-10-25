@@ -1,0 +1,16 @@
+# Google Cloud TTS + Vision — OPTIONAL.
+#
+# Only needed if you want TTS_ENGINE=google or OCR_ENGINE=google.
+# Google requires a billing account on the project even to use the free
+# tier, so skip this unless you already have one.
+#
+#     pip install -r requirements-google.txt
+#
+# Then enable the Cloud Text-to-Speech API and the Cloud Vision API in
+# https://console.cloud.google.com/apis/library and point
+# GOOGLE_APPLICATION_CREDENTIALS at your service account JSON.
+
+google-cloud-texttospeech>=2.16.3
+google-cloud-vision>=3.7.0
+google-auth>=2.30.0
+google-api-python-client>=2.100.0

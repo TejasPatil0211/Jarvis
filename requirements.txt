@@ -1,33 +1,53 @@
-# Voice Stack
-pvporcupine>=3.0.2
+# ─── Jarvis core — no signup, no credit card, no corporate email ─────────
+# Everything here works with free accounts only, or with no account at all.
 
-# Mic: prefer pyaudio; fall back to sounddevice
-numpy>=1.26.4; python_version>= "3.14"
+# Wake word — openWakeWord. Fully local, no API key, no signup.
+# Ships a pretrained "hey jarvis" model.
+#
+# openwakeword declares tflite-runtime as a dependency and tflite has no
+# wheels for Python 3.12+. Install it without dependencies, then add
+# onnxruntime explicitly:
+#     pip install --no-deps openwakeword
+#     pip install onnxruntime
+openwakeword>=0.6.0
+onnxruntime>=1.16.0
+
+# Microphone. pip picks the right backend for your Python version.
+numpy>=1.26.4; python_version >= "3.14"
 sounddevice>=0.5.6; python_version >= "3.14"
 pyaudio>=0.2.14; python_version < "3.14"
 
-# VAD: SimpleVAD handles fallback as webrtcvad doesn't support fallback
+# Voice activity detection. simple_vad.py (bundled) is the fallback when
+# webrtcvad has no wheel for your Python.
 webrtcvad>=2.0.10; python_version < "3.12"
 
-# API's
-google-cloud-texttospeech>=2.24.1
-google-auth>=2.30.0
+# LLM + speech to text (Groq). One free account, no credit card.
 openai>=1.40.0
-google-cloud-vision>=3.7.0
-google-api-python-client>=2.100.0
 
-# Utils
-python-dotenv>=1.0.1
-pygame-ce>=2.5.7
+# Text to speech. edge-tts needs no API key, no signup, no billing.
+edge-tts>=7.2.0
+
+# Utilities
 python-dotenv>=1.0.1
 requests>=2.32.3
 python-docx>=1.1.0
 Pillow>=10.3.0
+pygame-ce>=2.5.7
 
-# System control
+# System control (Layer 4)
 pycaw>=20230407; sys_platform == "win32" and python_version < "3.14"
 pywin32>=306; sys_platform == "win32"
 comtypes>=1.2.0; sys_platform == "win32"
 pyobjc-framework-Cocoa>=10.0; sys_platform == "darwin"
 
-
+# ─── Optional add-ons ────────────────────────────────────────────────────
+# Wake word via Picovoice instead of openWakeWord. Requires an AccessKey
+# from https://console.picovoice.ai/ (their signup asks for a corporate
+# email). Install with:  pip install pvporcupine
+#
+# Local OCR with Tesseract. Free and offline, but weak on handwriting.
+# Needs the Tesseract binary too. Install with:  pip install pytesseract
+#
+# Google Cloud TTS + Vision. Best OCR quality, but Google requires a
+# billing account on the project even to use the free tier.
+# Install with:  pip install -r requirements-google.txt

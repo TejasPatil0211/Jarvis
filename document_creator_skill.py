@@ -3,13 +3,22 @@ import os
 from datetime import datetime, timezone
 from typing import ClassVar
 
-from base import Skill
-from config import (
+try:  # package context: `python -m jarvis.main`
+    from .base import Skill
+    from .config import (
+        DOCS_OUTPUT_DIR,
+        OPENAI_API_KEY,
+        OPENAI_BASE_URL,
+        OPENAI_MODEL,
+    )
+except ImportError:  # script context: `python main.py`
+    from base import Skill
+    from config import (
     DOCS_OUTPUT_DIR,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     OPENAI_MODEL,
-)
+    )
 
 try:
     from docx import Document  # pyright: ignore[reportMissingImports]
@@ -37,11 +46,20 @@ class DocumentCreatorSkill(Skill):
     ]
 
     def __init__(self):
+        self.client = None
         if not OPENAI_API_KEY:
             logger.warning("DocumentCreatorSkill: OPENAI_API_KEY is not set.")
-            self.client = None
             return
-        self.client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+        if OpenAI is None:
+            logger.warning(
+                "DocumentCreatorSkill: the 'openai' package is not installed."
+            )
+            return
+        try:
+            self.client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+        except Exception as e:  # never let a bad key break skill discovery
+            logger.error(f"DocumentCreatorSkill: could not create OpenAI client: {e}")
+            self.client = None
 
     def handle(self, user_input: str) -> str:
         if self.client is None:

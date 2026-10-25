@@ -25,7 +25,10 @@ class SimpleVAD:
     }
 
     def __init__(self, aggressiveness: int = 2):
-        self.threshold = self.THRESHOLDS
+        # Must be the *value* for this aggressiveness level, not the whole
+        # mapping — comparing a float against a dict raises TypeError.
+        self.threshold = self.THRESHOLDS.get(aggressiveness, 700)
+        self.aggressiveness = aggressiveness
 
     def is_speech(self, audio_bytes: bytes, sample_rate: int = 16000) -> bool:
         if not audio_bytes or len(audio_bytes) < 2:
@@ -40,4 +43,13 @@ class SimpleVAD:
         except struct.error as e:
             logger.debug(f"SimpleVAD error: {e}")
             return False
+        except (TypeError, ValueError) as e:
+            # A misconfigured threshold must never take the recorder down.
+            logger.error(f"SimpleVAD misconfigured: {e}")
+            return False
+
+    def set_aggressiveness(self, level: int) -> None:
+        """Change sensitivity at runtime (0-3)."""
+        self.aggressiveness = level
+        self.threshold = self.THRESHOLDS.get(level, 700)
         
