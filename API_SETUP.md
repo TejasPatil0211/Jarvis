@@ -43,9 +43,7 @@ python -m venv venv
 venv\Scripts\activate          # Windows
 source venv/bin/activate       # macOS / Linux
 
-# openwakeword needs --no-deps on Python 3.12+ (tflite has no wheels there)
-pip install --no-deps openwakeword
-pip install onnxruntime
+# openwakeword and onnxruntime are already in requirements.txt
 pip install -r requirements.txt
 
 cp .env.keys .env              # then paste your Groq key in
@@ -53,6 +51,9 @@ python main.py
 ```
 
 That is it. No Picovoice, no Google Cloud, no billing account.
+
+> On Linux with Python 3.12+, see the wake word section below for a two-step
+> install. Windows and macOS need nothing special.
 
 ---
 
@@ -133,14 +134,24 @@ Listens for "hey jarvis" in the background. Runs entirely on your CPU with ONNX 
 ### Install
 
 ```bash
-# Python 3.12+ — install without dependencies first
-pip install --no-deps openwakeword
-pip install onnxruntime
+pip install openwakeword onnxruntime
 ```
 
-> **Why `--no-deps`?** openWakeWord declares `tflite-runtime` as a dependency, and tflite has no wheels for Python 3.12 or newer. Installing without dependencies and adding `onnxruntime` yourself avoids a failed resolve. openWakeWord falls back to ONNX automatically when tflite is absent.
+Or just `pip install -r requirements.txt` — both are already listed there.
 
-On Python 3.11 and older you can just run `pip install openwakeword`.
+> **Windows and macOS:** a plain install works on every Python version. Since
+> openWakeWord 0.6.0, `tflite-runtime` is only pulled in on Linux, so there is
+> nothing to work around here.
+
+> **Linux + Python 3.12+:** `tflite-runtime` has no wheels past cp311, and
+> openWakeWord requires it on Linux, so the resolve fails. Install in two
+> steps instead:
+> ```bash
+> pip install onnxruntime scipy scikit-learn tqdm requests
+> pip install --no-deps openwakeword
+> ```
+> openWakeWord falls back to ONNX automatically when tflite is absent, and
+> ONNX is what it uses on Windows anyway.
 
 ### Download the model (one time)
 
@@ -428,12 +439,16 @@ That is a warning, not an error. openWakeWord is being used instead. If you want
 error: Could not find a version that satisfies the requirement tflite-runtime
 ```
 
-Expected on Python 3.12+. Use:
+Expected on **Linux** with Python 3.12+. Use:
 
 ```bash
+pip install onnxruntime scipy scikit-learn tqdm requests
 pip install --no-deps openwakeword
-pip install onnxruntime
 ```
+
+On Windows and macOS this error should not appear — openWakeWord 0.6.0 only
+requires tflite-runtime on Linux. If you hit it on Windows, you are probably
+on an older openWakeWord; upgrade with `pip install -U openwakeword`.
 
 ### openWakeWord triggers on background noise
 

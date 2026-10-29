@@ -121,7 +121,9 @@ Web search uses DuckDuckGo — no API key required.
 
 ```text
 jarvis/
-├── main.py                     # Entry point — main loop
+├── main.py                     # Entry point — voice loop
+├── chat.py                     # Text mode — talk to Jarvis with no mic
+├── conversation.py             # Shared routing (skill first, then LLM)
 ├── config.py                   # Env vars, constants, key validation
 │
 ├── mic_manager.py              # Shared audio handle, wake word, VAD recording
@@ -148,6 +150,7 @@ jarvis/
 │
 ├── test_compat.py              # Dependency checker
 ├── test_smoke.py               # Import and startup smoke test
+├── test_chat.py                # Chat mode, recording and device tests
 ├── test_engines.py             # Engine selection tests
 ├── test_fixes.py               # Regression tests for fixed bugs
 │
@@ -194,12 +197,25 @@ source venv/bin/activate
 Then install dependencies:
 
 ```bash
-# openwakeword needs --no-deps on Python 3.12+ (tflite has no wheels there)
-pip install --no-deps openwakeword
-pip install onnxruntime
-
 pip install -r requirements.txt
 ```
+
+That is one command on Windows and macOS. `requirements.txt` uses environment
+markers, so pip picks the right build for your platform automatically:
+
+| Package | Python 3.11–3.13 | Python 3.14+ |
+|---|---|---|
+| Microphone | `pyaudio` | `sounddevice` |
+| VAD | `webrtcvad` | `simple_vad.py` (bundled) |
+| Inference | `onnxruntime>=1.16` | `onnxruntime>=1.24` (cp314 wheels) |
+
+> **Linux + Python 3.12+ only:** `tflite-runtime` has no wheels past cp311 and
+> openWakeWord pulls it in on Linux, so the resolve fails. Use the two-step
+> install instead:
+> ```bash
+> pip install onnxruntime scipy scikit-learn tqdm requests
+> pip install --no-deps openwakeword
+> ```
 
 `requirements.txt` uses environment markers, so pip picks the right audio backend for your Python version automatically:
 
@@ -314,6 +330,58 @@ Jarvis: "Done. Saved 'Project Notes' to the documents folder."
 
 You:    "jarvis, what's my name"
 Jarvis: "You told me your name was earlier."      # only with memory enabled
+```
+
+### Text mode — no microphone needed
+
+If the mic is not cooperating, or you just want to type:
+
+```bash
+python chat.py                # talk to Jarvis in the terminal
+python chat.py --no-voice     # print replies only
+python chat.py --no-memory    # start with a clean slate
+```
+
+```
+You> what time is it
+Jarvis> It's 10:45 AM.
+
+You> tell me a joke
+Jarvis> What do you call a bear with no teeth? A gummy bear.
+
+You> who won the world cup in 1998
+Jarvis> France beat Brazil 3-0 in the final.
+
+You> /skills
+  Skills:
+    - date
+    - document_creator
+    ...
+
+You> /memory        # show the conversation history
+You> /clear        # wipe it
+You> /voice off    # stop speaking replies
+You> /quit
+```
+
+Same brain, same skills, same function calling, same memory. The only thing
+missing is the microphone.
+
+### Choosing a microphone
+
+If Jarvis hears you but the wrong device is being used — common with
+headsets — point it at the right one:
+
+```bash
+python mic_manager.py --list-devices    # show every input device
+python mic_manager.py --test-mic        # record 3 seconds and report
+```
+
+Then set the device in `.env`:
+
+```env
+MIC_DEVICE=2            # by index
+MIC_DEVICE=headset      # or by name fragment
 ```
 
 ### OCR workflow

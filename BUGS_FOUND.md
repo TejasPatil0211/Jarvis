@@ -224,6 +224,104 @@ during instantiation. The registry caught it and silently dropped the skill.
 
 ---
 
+## Found while building the text chat mode
+
+### 18. The microphone never recorded anything — `mic_manager.py`
+
+**File:** `mic_manager.py` `record_command()`
+**Symptom:** The wake word was detected, but every single command came back as
+*"Sorry, I couldn't hear you."* The mic worked fine — the audio was thrown away.
+
+**Cause:** Neither branch of the recording loop returned the captured frames.
+The `sounddevice` branch had no `return` at all, and the `pyaudio` branch's
+`return b"".join(frames)` sat **after** a `break`, making it unreachable
+dead code. The function therefore fell off the end and returned `None`.
+
+```python
+# before
+            else:
+                ...
+                        break
+                        return b"".join(frames)   # unreachable
+
+# after
+            ...
+            audio = b"".join(frames)
+            if not audio:
+                return self._record_fixed(5.0)
+            return audio
+```
+
+**Severity:** Critical — the voice loop was completely non-functional.
+
+### 19. `_record_fixed()` captured only the first chunk — `mic_manager.py`
+
+**File:** `mic_manager.py` `_record_fixed()`
+**Symptom:** The fallback recorder returned about 64 ms of audio instead of the
+requested duration, so Whisper received a fragment.
+
+**Cause:** The `return` was inside the `for` loop, so it returned after the
+first iteration. Moved it after the loop.
+
+### 20. No skill could ever match — `base.py`
+
+**File:** `base.py` `__init__`
+**Symptom:** Every skill reported zero triggers. "what time is it" fell
+straight through to the LLM.
+
+**Cause:** The base class assigned `self.keywords = []` in `__init__`. An
+instance attribute shadows the class-level one, so the `keywords` list that
+every subclass declares as a `ClassVar` was overwritten with an empty list.
+
+```python
+# before
+def __init__(self) -> None:
+    self.keywords: list[str] = []
+
+# after
+def __init__(self) -> None:
+    # Only default the trigger list when the subclass genuinely has none.
+    if not getattr(self, "keywords", None):
+        self.keywords = []
+```
+
+**Severity:** Critical — the entire skill system was dead. Combined with bug
+22, skills were doubly unreachable.
+
+### 21. A nested tuple in the keyword list — `date_skill.py`
+
+**File:** `date_skill.py` `keywords`
+**Symptom:** `matches()` raised
+`TypeError: 'in <string>' requires string as left operand, not tuple`.
+
+**Cause:** One entry was written as `("today's date,", "current date")` — a
+tuple inside the list. The neighbouring entry also had a stray leading space
+(`" what is today"`), so it could never match either.
+
+**Fix:** Flattened to plain strings, and `matches()` now skips any non-string
+entry instead of raising.
+
+### 22. The skills were never called from the voice loop — `main.py`
+
+**File:** `main.py`
+**Symptom:** `SkillRegistry` was imported nowhere in the running app. Only the
+eight LLM function-calling tools were reachable, so the document reader and
+document creator — the two skills with no tool schema — were unreachable in
+practice.
+
+**Fix:** Both `main.py` and the new `chat.py` now route through
+`conversation.handle_command()`, which tries the skill registry first and
+falls back to the LLM.
+
+### 23. The document skills had no LLM tool schema — `tools.py`
+
+**File:** `tools.py` `SKILL_TOOLS`
+**Fix:** Added `read_document` and `create_document` schemas so the model can
+reach the OCR and document-creation skills directly. That brings the tool
+count to ten, all with handlers.
+
+---
+
 ## Added in the no-signup rewrite
 
 | Change | Why |

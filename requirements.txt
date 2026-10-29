@@ -1,40 +1,56 @@
 # ─── Jarvis core — no signup, no credit card, no corporate email ─────────
 # Everything here works with free accounts only, or with no account at all.
-
-# Wake word — openWakeWord. Fully local, no API key, no signup.
-# Ships a pretrained "hey jarvis" model.
 #
-# openwakeword declares tflite-runtime as a dependency and tflite has no
-# wheels for Python 3.12+. Install it without dependencies, then add
-# onnxruntime explicitly:
-#     pip install --no-deps openwakeword
-#     pip install onnxruntime
-openwakeword>=0.6.0
-onnxruntime>=1.16.0
+#   pip install -r requirements.txt
+#
+# Verified against Python 3.12, 3.13 and 3.14 on Windows.
 
-# Microphone. pip picks the right backend for your Python version.
-numpy>=1.26.4; python_version >= "3.14"
+# ─── Wake word ───────────────────────────────────────────────────────────
+# openWakeWord. Fully local ONNX inference — no API key, no signup, no
+# phone-home. Ships a pretrained "hey jarvis" model.
+#
+# openwakeword>=0.6.0 only pulls in tflite-runtime on Linux, so this line
+# installs cleanly on Windows and macOS with no extra flags.
+#
+# Linux + Python 3.12+ only: tflite-runtime has no wheels past cp311, so the
+# resolve fails. Use the two-step install instead:
+#     pip install onnxruntime scipy scikit-learn tqdm requests
+#     pip install --no-deps openwakeword
+openwakeword>=0.6.0
+
+# Inference runtime for the wake word model.
+# Python 3.14 needs onnxruntime>=1.24 — cp314 wheels did not exist earlier.
+onnxruntime>=1.16.0; python_version < "3.14"
+onnxruntime>=1.24.0; python_version >= "3.14"
+
+# ─── Microphone ──────────────────────────────────────────────────────────
+# pip picks the right backend for your Python version automatically.
+# pyaudio has no cp314 wheel, which is why 3.14+ uses sounddevice instead.
+numpy>=1.26.4; python_version < "3.14"
+numpy>=2.1.0; python_version >= "3.14"
 sounddevice>=0.5.6; python_version >= "3.14"
 pyaudio>=0.2.14; python_version < "3.14"
 
-# Voice activity detection. simple_vad.py (bundled) is the fallback when
-# webrtcvad has no wheel for your Python.
+# ─── Voice activity detection ────────────────────────────────────────────
+# simple_vad.py (bundled) is the fallback when webrtcvad has no wheel.
 webrtcvad>=2.0.10; python_version < "3.12"
 
-# LLM + speech to text (Groq). One free account, no credit card.
+# ─── LLM + speech to text (Groq) ─────────────────────────────────────────
+# One free account, no credit card. https://console.groq.com/keys
 openai>=1.40.0
 
-# Text to speech. edge-tts needs no API key, no signup, no billing.
+# ─── Text to speech ──────────────────────────────────────────────────────
+# edge-tts needs no API key, no signup and no billing.
 edge-tts>=7.2.0
 
-# Utilities
+# ─── Utilities ───────────────────────────────────────────────────────────
 python-dotenv>=1.0.1
 requests>=2.32.3
 python-docx>=1.1.0
 Pillow>=10.3.0
 pygame-ce>=2.5.7
 
-# System control (Layer 4)
+# ─── System control (Layer 4) ─────────────────────────────────────────────
 pycaw>=20230407; sys_platform == "win32" and python_version < "3.14"
 pywin32>=306; sys_platform == "win32"
 comtypes>=1.2.0; sys_platform == "win32"

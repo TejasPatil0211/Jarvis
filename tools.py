@@ -47,6 +47,50 @@ SKILL_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "read_document",
+            "description": (
+                "Read and transcribe the text in an image file (for example a "
+                "photo of handwritten notes). Use this when the user asks you "
+                "to read, scan, transcribe or OCR a document or an image."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": (
+                            "Path to the image. If omitted, the most recent "
+                            "image in the scans folder is used."
+                        ),
+                    }
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_document",
+            "description": (
+                "Create a Word (.docx) document with the given title and "
+                "content, and save it to the documents folder."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Document title"},
+                    "content": {
+                        "type": "string",
+                        "description": "Body text of the document",
+                    },
+                },
+                "required": ["title", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "tell_joke",
             "description": "Tell the user a random joke",
             "parameters": {
@@ -122,6 +166,8 @@ def execute_tool(function_name: str, args: dict) -> str:
         if function_name == "get_current_time": return _get_time(args.get("what", "time"))
         if function_name == "get_weather": return _get_weather(args.get("location", ""))
         if function_name == "tell_joke": return _tell_joke()
+        if function_name == "read_document": return _read_document(args.get("file_path", ""))
+        if function_name == "create_document": return _create_document(args.get("title", ""), args.get("content", ""))
         if function_name == "set_timer": return _set_timer(args.get("duration", 0), args.get("unit", "minutes"))
         if function_name == "web_search": return _web_search(args.get("query", ""))
         if function_name == "open_application": return _open_app(args.get("name", ""))
@@ -157,6 +203,34 @@ def _tell_joke() -> str:
         return JokeSkill().handle("joke")
     except (ImportError, AttributeError):
         return "Why don't scientists trust atoms? Because they make up everything."
+
+
+def _read_document(file_path: str = "") -> str:
+    """Transcribe an image via the document reader skill."""
+    try:
+        from document_reader_skill import DocumentReaderSkill
+    except ImportError as e:
+        return f"Document reading is unavailable: {e}"
+    try:
+        skill = DocumentReaderSkill()
+        query = f"read this {file_path}".strip() if file_path else "read this document"
+        return skill.handle(query)
+    except Exception as e:
+        return f"Sorry, I couldn't read that document. {e}"
+
+
+def _create_document(title: str, content: str) -> str:
+    """Create a .docx via the document creator skill."""
+    try:
+        from document_creator_skill import DocumentCreatorSkill
+    except ImportError as e:
+        return f"Document creation is unavailable: {e}"
+    try:
+        skill = DocumentCreatorSkill()
+        query = f"create a document about {title}. {content}".strip()
+        return skill.handle(query)
+    except Exception as e:
+        return f"Sorry, I couldn't create that document. {e}"
 
 def _set_timer(duration: int, unit: str) -> str:
     if duration <= 0:

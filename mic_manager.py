@@ -54,6 +54,126 @@ def _vad_is_speech(vad, chunk_bytes: bytes, rate: int) -> bool:
         return vad.is_speech(chunk_bytes, rate)
     return vad.is_speech(chunk_bytes)
 
+def _resolve_sd_device():
+    """Resolve the MIC_DEVICE setting to a sounddevice device id.
+
+    MIC_DEVICE can be a device index ("2") or part of a device name
+    ("headset", "usb mic"). Empty means "use the system default".
+    """
+    import config
+
+    spec = (config.MIC_DEVICE or "").strip()
+    if not spec:
+        return None
+
+    try:
+        return int(spec)
+    except ValueError:
+        pass
+
+    try:
+        devices = _sd.query_devices()
+    except Exception as e:
+        logger.warning(f"Could not query audio devices: {e}")
+        return None
+
+    matches = []
+    for index, device in enumerate(devices):
+        if device.get("max_input_channels", 0) < 1:
+            continue
+        name = str(device.get("name", ""))
+        if spec.lower() in name.lower():
+            matches.append((index, name))
+
+    if not matches:
+        logger.warning(
+            f"No input device matching '{spec}'. Using the system default. "
+            "Run 'python mic_manager.py --list-devices' to see the options."
+        )
+        return None
+    if len(matches) > 1:
+        logger.warning(
+            f"'{spec}' matches {len(matches)} devices, using the first: "
+            f"{matches[0][1]}"
+        )
+    index, name = matches[0]
+    logger.info(f"Using input device [{index}] {name}")
+    return index
+
+
+def _resolve_pa_device(pa):
+    """Resolve MIC_DEVICE to a PyAudio input device index."""
+    import config
+
+    spec = (config.MIC_DEVICE or "").strip()
+    if not spec:
+        return None
+
+    try:
+        index = int(spec)
+        if index < pa.get_device_count():
+            return index
+        logger.warning(f"Input device {index} does not exist. Using default.")
+        return None
+    except ValueError:
+        pass
+
+    for index in range(pa.get_device_count()):
+        info = pa.get_device_info_by_index(index)
+        if info.get("maxInputChannels", 0) < 1:
+            continue
+        if spec.lower() in str(info.get("name", "")).lower():
+            logger.info(f"Using input device [{index}] {info.get('name')}")
+            return index
+
+    logger.warning(
+        f"No input device matching '{spec}'. Using the system default. "
+        "Run 'python mic_manager.py --list-devices' to see the options."
+    )
+    return None
+
+
+def list_devices() -> None:
+    """Print every audio input device so the user can pick one."""
+    print("=" * 62)
+    print("  AUDIO INPUT DEVICES")
+    print("=" * 62)
+
+    if _audio_backend == "sounddevice":
+        try:
+            devices = _sd.query_devices()
+        except Exception as e:
+            print(f"  Could not query devices: {e}")
+            return
+        for index, device in enumerate(devices):
+            channels = device.get("max_input_channels", 0)
+            if channels < 1:
+                continue
+            default = " (system default)" if device.get("default_samplerate") else ""
+            print(f"  [{index}] {device.get('name')}  "
+                  f"channels={channels} rate={int(device.get('default_samplerate', 0))}{default}")
+    elif _audio_backend == "pyaudio":
+        pa = _pyaudio.PyAudio()
+        try:
+            for index in range(pa.get_device_count()):
+                info = pa.get_device_info_by_index(index)
+                if info.get("maxInputChannels", 0) < 1:
+                    continue
+                print(f"  [{index}] {info.get('name')}  "
+                      f"channels={info.get('maxInputChannels')} "
+                      f"rate={int(info.get('defaultSampleRate', 0))}")
+        finally:
+            pa.terminate()
+    else:
+        print("  No audio backend installed. Run: pip install -r requirements.txt")
+        return
+
+    print()
+    print("  Set MIC_DEVICE in .env to a number or part of a name:")
+    print("      MIC_DEVICE=2")
+    print("      MIC_DEVICE=headset")
+
+
 class MicManager:
     def __init__(self, access_key: str, keyword_path: str | None = None):
         self.access_key = access_key
@@ -66,6 +186,7 @@ class MicManager:
             channels=1,
             dtype="int16",
             blocksize=blocksize,
+            device=_resolve_sd_device(),
         )
         stream.start()
         return stream
@@ -81,7 +202,7 @@ class MicManager:
         """Read n_frames samples -> tuple of ints (for Porcupine)."""
         data, _overflowed = stream.read(n_frames)
         return tuple(int(x) for x in data.flatten())
-    
+
     def _pa_open_input(self, rate: int, frames_per_buffer: int):
         pa = _pyaudio.PyAudio()
         stream = pa.open(
@@ -90,6 +211,7 @@ class MicManager:
             rate=rate,
             input=True,
             frames_per_buffer=frames_per_buffer,
+            input_device_index=_resolve_pa_device(pa),
         )
         return pa, stream
 
@@ -189,7 +311,7 @@ class MicManager:
                         if silent_count >= silence_limit:
                             logger.info(f"Silence detected - stopped at {len(frames)} frames.")
                             break
-                        
+
             else:
                 pa, stream = self._pa_open_input(rate=rate, frames_per_buffer=frame_bytes_len)
                 for _ in range(max_frames):
@@ -202,7 +324,15 @@ class MicManager:
                         if silent_count >= silence_limit:
                             logger.info(f"Silence detected - stopped at {len(frames)} frames.")
                             break
-                        return b"".join(frames)
+
+            # Both branches fall through to here. Returning the frames is
+            # essential — without it this function yields None and the caller
+            # reports "I couldn't hear you" even though the mic worked.
+            audio = b"".join(frames)
+            if not audio:
+                logger.warning("Recorded zero bytes - falling back to fixed duration.")
+                return self._record_fixed(5.0)
+            return audio
 
         except (OSError, RuntimeError, ValueError) as e:
             logger.error(f"Recording error: {e}")
@@ -248,7 +378,9 @@ class MicManager:
             frames = []
             for _ in range(int(rate / chunk * duration)):
                 frames.append(stream.read(chunk, exception_on_overflow=False))
-                return b"".join(frames)
+            # Must return after the loop — returning inside it would capture
+            # only the first 64 ms instead of the full duration.
+            return b"".join(frames)
         finally:
             stream.stop_stream()
             stream.close()
@@ -259,3 +391,28 @@ class MicManager:
         logger.debug("MicManager.close() - nothing to clean up.")
 
 
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--list-devices" in sys.argv or "-l" in sys.argv:
+        list_devices()
+    elif "--test-mic" in sys.argv:
+        import config
+
+        print(f"Backend: {_backend_label} | VAD: {_vad_backend}")
+        print(f"MIC_DEVICE: {config.MIC_DEVICE or '(system default)'}")
+        manager = MicManager(None, None)
+        print("Recording 3 seconds — speak now...")
+        audio = manager.record_command(max_duration=3.0, silence_timeout=1.0)
+        if audio:
+            print(f"OK — captured {len(audio)} bytes "
+                  f"({len(audio) / 32000:.1f}s of audio)")
+            print("If the byte count is tiny, your mic is capturing silence.")
+        else:
+            print("FAILED — no audio captured. Check MIC_DEVICE.")
+    else:
+        print("Usage:")
+        print("  python mic_manager.py --list-devices   show input devices")
+        print("  python mic_manager.py --test-mic       record 3 seconds and report")

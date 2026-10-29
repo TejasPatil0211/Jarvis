@@ -59,6 +59,11 @@ CHUNK_SIZE = 512 # frames per buffer for PyAudio
 FORMAT = 16 # bits per sample (pyaudio.paInt16)
 RECORD_SECONDS = 5 # duration for command capture
 
+# Microphone selection. Empty = system default. Set to a device index ("2")
+# or part of a device name ("headset", "usb mic") to pick a specific input.
+# List the options with: python mic_manager.py --list-devices
+MIC_DEVICE = os.getenv("MIC_DEVICE", "").strip()
+
 # Feature Flags(settings.py)
 MEMORY_ENABLED = os.getenv("MEMORY_ENABLED", "True").lower() in ("true", "1", "yes")
 MEMORY_MAX_TURNS = int(os.getenv("MEMORY_MAX_TURNS", "10"))

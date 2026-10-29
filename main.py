@@ -8,6 +8,7 @@ from config import (
     PORCUPINE_KEYWORD_PATH,
     validate_required_keys,
 )
+from conversation import handle_command
 from listener import Listener
 from mic_manager import MicManager
 from speaker import Speaker
@@ -61,7 +62,11 @@ def main():
                 speaker.speak("Run python settings.py from a terminal.")
                 continue
 
-            response = brain.process(text)
+            # Routes to a keyword-matched skill first, then the LLM.
+            response, _source = handle_command(text, brain)
+            if not response:
+                speaker.speak("Sorry, I didn't understand that.")
+                continue
             speaker.speak(response)
         except (OSError, RuntimeError, ValueError, TypeError, ConnectionError, TimeoutError) as e:
             logger.error(f"Loop error: {e}")

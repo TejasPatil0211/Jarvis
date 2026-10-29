@@ -9,9 +9,10 @@ except ImportError:  # script context: `python main.py`
 
 class DateSkill(Skill):
     name = "date"
-    keywords: ClassVar[list[str | tuple[str, str]]] = [
-        " what is today",
-        ("today's date,", "current date"),
+    keywords: ClassVar[list[str]] = [
+        "what is today",
+        "today's date",
+        "current date",
         "what date",
     ]
 
